@@ -64,6 +64,11 @@ set(BUILD_WITH_TRACY FALSE CACHE BOOL
 set(FETCH_TRACY_GIT_TAG "master" CACHE STRING
 	"Git tag for fetching Tracy client. Match with your server (gui) version")
 
+set(BUILD_WITH_VR FALSE CACHE BOOL
+	"Build with OpenVR support")
+set(OPENVR_SDK_PATH "../openvr" CACHE STRING
+	"Path to OpenVR SDK")
+
 set(DEFAULT_RUN_IN_PLACE FALSE)
 if(WIN32)
 	set(DEFAULT_RUN_IN_PLACE TRUE)
@@ -77,6 +82,7 @@ message(STATUS "BUILD_SERVER: " ${BUILD_SERVER})
 message(STATUS "BUILD_UNITTESTS: " ${BUILD_UNITTESTS})
 message(STATUS "BUILD_BENCHMARKS: " ${BUILD_BENCHMARKS})
 message(STATUS "BUILD_DOCUMENTATION: " ${BUILD_DOCUMENTATION})
+message(STATUS "BUILD_WITH_VR: " ${BUILD_WITH_VR})
 message(STATUS "RUN_IN_PLACE: " ${RUN_IN_PLACE})
 
 set(WARN_ALL TRUE CACHE BOOL "Enable -Wall for Release build")
@@ -296,6 +302,53 @@ if(BUILD_UNITTESTS OR BUILD_BENCHMARKS)
 endif()
 
 add_subdirectory(lib/tiniergltf)
+
+# OpenVR SDK
+if(BUILD_WITH_VR)
+	message(STATUS "Configuring OpenVR SDK...")
+	
+	# Check if OpenVR SDK path exists
+	if(NOT EXISTS ${OPENVR_SDK_PATH})
+		message(FATAL_ERROR "OpenVR SDK not found at ${OPENVR_SDK_PATH}. Please set OPENVR_SDK_PATH to the correct path.")
+	endif()
+	
+	# Convert relative path to absolute if needed
+	get_filename_component(OPENVR_SDK_PATH_ABS ${OPENVR_SDK_PATH} ABSOLUTE)
+	set(OPENVR_SDK_PATH ${OPENVR_SDK_PATH_ABS})
+	
+	# Add OpenVR include directories
+	include_directories(${OPENVR_SDK_PATH}/headers)
+	
+	# Set OpenVR library path
+	if(WIN32)
+		set(OPENVR_LIB_PATH "${OPENVR_SDK_PATH}/lib/win64")
+	elseif(APPLE)
+		set(OPENVR_LIB_PATH "${OPENVR_SDK_PATH}/lib/osx64")
+	else()
+		set(OPENVR_LIB_PATH "${OPENVR_SDK_PATH}/lib/linux64")
+	endif()
+	
+	# Find OpenVR library
+	find_library(OPENVR_LIBRARY
+		NAMES openvr_api
+		PATHS ${OPENVR_LIB_PATH}
+		NO_DEFAULT_PATH
+	)
+	
+	if(NOT OPENVR_LIBRARY)
+		message(FATAL_ERROR "OpenVR library not found in ${OPENVR_LIB_PATH}")
+	endif()
+	
+	# Define VR support
+	add_definitions(-DBUILD_WITH_VR)
+	
+	# Make OpenVR library available globally
+	set(OPENVR_LIBRARY ${OPENVR_LIBRARY} CACHE FILEPATH "OpenVR library" FORCE)
+	
+	message(STATUS "OpenVR SDK configured successfully")
+	message(STATUS "OpenVR SDK path: ${OPENVR_SDK_PATH}")
+	message(STATUS "OpenVR library path: ${OPENVR_LIB_PATH}")
+endif()
 
 # Subdirectories
 # Be sure to add all relevant definitions above this

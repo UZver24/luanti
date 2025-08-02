@@ -70,20 +70,31 @@ configure_cmake() {
     local run_in_place=${2:-TRUE}
     local build_client=${3:-TRUE}
     local build_server=${4:-FALSE}
+    local build_vr=${5:-FALSE}
+    local openvr_path=${6:-$(pwd)/../openvr}
     
     print_info "Конфигурация CMake..."
     print_info "Тип сборки: $build_type"
     print_info "Запуск из исходников: $run_in_place"
     print_info "Сборка клиента: $build_client"
     print_info "Сборка сервера: $build_server"
+    print_info "VR поддержка: $build_vr"
+    
+    if [ "$build_vr" = "TRUE" ]; then
+        print_info "Путь к OpenVR SDK: $openvr_path"
+    fi
     
     cmake .. \
         -DCMAKE_BUILD_TYPE=$build_type \
         -DRUN_IN_PLACE=$run_in_place \
         -DBUILD_CLIENT=$build_client \
         -DBUILD_SERVER=$build_server \
+        -DBUILD_WITH_VR=$build_vr \
+        -DOPENVR_SDK_PATH=$openvr_path \
         -DBUILD_UNITTESTS=TRUE \
-        -DBUILD_DOCUMENTATION=TRUE
+        -DBUILD_DOCUMENTATION=TRUE \
+        -B . \
+        -S ..
     
     print_success "Конфигурация завершена"
 }
@@ -127,6 +138,8 @@ main() {
     local run_in_place="TRUE"
     local build_client="TRUE"
     local build_server="FALSE"
+    local build_vr="TRUE"
+    local openvr_path="$(pwd)/../openvr"
     local clean=false
     local install=false
     local jobs=$(nproc)
@@ -163,6 +176,18 @@ main() {
                 run_in_place="FALSE"
                 shift
                 ;;
+            --vr)
+                build_vr="TRUE"
+                shift
+                ;;
+            --no-vr)
+                build_vr="FALSE"
+                shift
+                ;;
+            --openvr-path)
+                openvr_path="$2"
+                shift 2
+                ;;
             --jobs|-j)
                 jobs="$2"
                 shift 2
@@ -191,7 +216,7 @@ main() {
     create_build_dir
     
     # Конфигурация и сборка
-    configure_cmake "$build_type" "$run_in_place" "$build_client" "$build_server"
+    configure_cmake "$build_type" "$run_in_place" "$build_client" "$build_server" "$build_vr" "$openvr_path"
     build_project "$jobs"
     
     # Возврат в корневую директорию
@@ -221,14 +246,19 @@ show_help() {
     echo "  --server-only        Собрать только сервер"
     echo "  --client-only        Собрать только клиент (по умолчанию)"
     echo "  --system-install     Сборка для системной установки"
+    echo "  --vr                 Включить поддержку VR (OpenVR) (по умолчанию)"
+    echo "  --no-vr              Отключить поддержку VR"
+    echo "  --openvr-path PATH   Путь к OpenVR SDK (по умолчанию: $(pwd)/../openvr)"
     echo "  --jobs, -j N         Количество параллельных процессов (по умолчанию: все доступные)"
     echo "  --help, -h           Показать эту справку"
     echo ""
     echo "Примеры:"
-    echo "  $0                    # Обычная сборка"
-    echo "  $0 --debug            # Сборка в режиме отладки"
+    echo "  $0                    # Сборка с поддержкой VR (по умолчанию)"
+    echo "  $0 --debug            # Сборка в режиме отладки с VR"
     echo "  $0 --clean --install  # Очистить, собрать и установить"
     echo "  $0 --server-only      # Собрать только сервер"
+    echo "  $0 --no-vr            # Сборка без поддержки VR"
+    echo "  $0 --openvr-path /path/to/openvr  # Сборка с VR и указанным путем к SDK"
 }
 
 # Запуск основной функции

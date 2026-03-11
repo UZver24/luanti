@@ -6,6 +6,8 @@
 
 set -e  # Остановка при ошибке
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Цвета для вывода
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -53,15 +55,15 @@ check_dependencies() {
 # Очистка предыдущей сборки
 clean_build() {
     print_info "Очистка предыдущей сборки..."
-    rm -rf build/
+    rm -rf "$SCRIPT_DIR/build/"
     print_success "Очистка завершена"
 }
 
 # Создание директории сборки
 create_build_dir() {
     print_info "Создание директории сборки..."
-    mkdir -p build
-    cd build
+    mkdir -p "$SCRIPT_DIR/build"
+    cd "$SCRIPT_DIR/build"
 }
 
 # Конфигурация CMake
@@ -71,7 +73,7 @@ configure_cmake() {
     local build_client=${3:-TRUE}
     local build_server=${4:-FALSE}
     local build_vr=${5:-FALSE}
-    local openvr_path=${6:-$(pwd)/../openvr}
+    local openvr_path=${6:-$SCRIPT_DIR/../openvr}
     
     print_info "Конфигурация CMake..."
     print_info "Тип сборки: $build_type"
@@ -84,7 +86,7 @@ configure_cmake() {
         print_info "Путь к OpenVR SDK: $openvr_path"
     fi
     
-    cmake .. \
+    cmake "$SCRIPT_DIR" \
         -DCMAKE_BUILD_TYPE=$build_type \
         -DRUN_IN_PLACE=$run_in_place \
         -DBUILD_CLIENT=$build_client \
@@ -94,7 +96,7 @@ configure_cmake() {
         -DBUILD_UNITTESTS=TRUE \
         -DBUILD_DOCUMENTATION=TRUE \
         -B . \
-        -S ..
+        -S "$SCRIPT_DIR"
     
     print_success "Конфигурация завершена"
 }
@@ -112,8 +114,8 @@ build_project() {
 # Запуск тестов
 run_tests() {
     print_info "Запуск unit-тестов..."
-    if [ -f "../bin/luanti" ]; then
-        ../bin/luanti --run-unittests
+    if [ -f "$SCRIPT_DIR/bin/luanti" ]; then
+        "$SCRIPT_DIR/bin/luanti" --run-unittests
         print_success "Тесты завершены"
     else
         print_warning "Исполняемый файл не найден, тесты пропущены"
@@ -139,7 +141,7 @@ main() {
     local build_client="TRUE"
     local build_server="FALSE"
     local build_vr="TRUE"
-    local openvr_path="$(pwd)/../openvr"
+    local openvr_path="$SCRIPT_DIR/../openvr"
     local clean=false
     local install=false
     local jobs=$(nproc)
@@ -220,7 +222,7 @@ main() {
     build_project "$jobs"
     
     # Возврат в корневую директорию
-    cd ..
+    cd "$SCRIPT_DIR"
     
     # Запуск тестов
     run_tests
@@ -231,7 +233,7 @@ main() {
     fi
     
     print_success "=== Сборка завершена успешно! ==="
-    print_info "Исполняемый файл: ./bin/luanti"
+    print_info "Исполняемый файл: $SCRIPT_DIR/bin/luanti"
 }
 
 # Показать справку

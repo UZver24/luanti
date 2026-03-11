@@ -6,6 +6,8 @@
 
 set -e  # Остановка при ошибке
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Цвета для вывода
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -31,8 +33,8 @@ print_error() {
 }
 
 # Пути к исполняемым файлам
-LUANTI_BIN="./bin/luanti"
-BUILD_LUANTI_BIN="./build/bin/luanti"
+LUANTI_BIN="$SCRIPT_DIR/bin/luanti"
+BUILD_LUANTI_BIN="$SCRIPT_DIR/build/bin/luanti"
 
 # Проверка существования исполняемого файла
 check_executable() {
@@ -98,8 +100,8 @@ create_user_dirs() {
     )
     
     for dir in "${user_dirs[@]}"; do
-        if [ ! -d "$dir" ]; then
-            mkdir -p "$dir"
+        if [ ! -d "$SCRIPT_DIR/$dir" ]; then
+            mkdir -p "$SCRIPT_DIR/$dir"
             print_info "Создана директория: $dir"
         fi
     done

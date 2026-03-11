@@ -21,10 +21,17 @@ public:
     
     // Проверка доступности VR
     bool IsVRReady() const { return m_bVRInitialized && m_pHMD != nullptr; }
+    bool IsVRInitialized() const { return m_bVRInitialized; }
     
     // Получение информации о VR устройстве
     std::string GetVRDeviceName() const;
     std::string GetVRDriverName() const;
+    
+    // Обновление VR поз
+    void UpdateVRPoses();
+    
+    // Отправка кадра в VR
+    void SubmitVRFrame();
     
     // Очистка ресурсов
     void ShutdownVR();
@@ -44,8 +51,11 @@ public:
     
     bool InitializeVR() { return false; }
     bool IsVRReady() const { return false; }
+    bool IsVRInitialized() const { return false; }
     std::string GetVRDeviceName() const { return "VR not available"; }
     std::string GetVRDriverName() const { return "VR not available"; }
+    void UpdateVRPoses() {}
+    void SubmitVRFrame() {}
     void ShutdownVR() {}
 };
 

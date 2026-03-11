@@ -12,7 +12,9 @@ VRManager::VRManager()
 }
 
 VRManager::~VRManager() {
-    ShutdownVR();
+    if (m_bVRInitialized) {
+        ShutdownVR();
+    }
 }
 
 bool VRManager::InitializeVR() {
@@ -35,6 +37,8 @@ bool VRManager::InitializeVR() {
         m_pHMD = nullptr;
         return false;
     }
+    
+    // Композитор готов к использованию
     
     m_bVRInitialized = true;
     
@@ -75,6 +79,36 @@ std::string VRManager::GetVRDriverName() const {
     return std::string(buf);
 }
 
+void VRManager::UpdateVRPoses() {
+    if (!m_bVRInitialized || !m_pCompositor || !m_pHMD) return;
+    
+    // Получение поз от VR системы
+    vr::TrackedDevicePose_t trackedDevicePoseArray[vr::k_unMaxTrackedDeviceCount];
+    vr::EVRCompositorError error = m_pCompositor->WaitGetPoses(trackedDevicePoseArray, vr::k_unMaxTrackedDeviceCount, nullptr, 0);
+    
+    if (error != vr::VRCompositorError_None) {
+        // Тихо игнорируем ошибки композитора
+        return;
+    }
+    
+    // Здесь можно обработать позы для управления камерой
+    // Пока просто получаем позы без обработки
+}
+
+void VRManager::SubmitVRFrame() {
+    if (!m_bVRInitialized || !m_pCompositor || !m_pHMD) return;
+    
+    // Отправка кадра в VR композитор
+    // Пока просто вызываем композитор без передачи текстур
+    // В будущем здесь будет передача стерео текстур
+    vr::EVRCompositorError leftError = m_pCompositor->Submit(vr::Eye_Left, nullptr);
+    vr::EVRCompositorError rightError = m_pCompositor->Submit(vr::Eye_Right, nullptr);
+    
+    // Тихо игнорируем ошибки композитора
+    (void)leftError;
+    (void)rightError;
+}
+
 void VRManager::ShutdownVR() {
     if (m_bVRInitialized) {
         infostream << "Shutting down VR..." << std::endl;
@@ -93,6 +127,8 @@ VRManager::~VRManager() {}
 bool VRManager::InitializeVR() { return false; }
 std::string VRManager::GetVRDeviceName() const { return "VR not available"; }
 std::string VRManager::GetVRDriverName() const { return "VR not available"; }
+void VRManager::UpdateVRPoses() {}
+void VRManager::SubmitVRFrame() {}
 void VRManager::ShutdownVR() {}
 
 #endif // BUILD_WITH_VR 

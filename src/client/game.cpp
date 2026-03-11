@@ -60,6 +60,7 @@
 #include <IAnimatedMeshSceneNode.h>
 #include "util/tracy_wrapper.h"
 #include "item_visuals_manager.h"
+#include "vr_manager.h"
 
 #if USE_SOUND
 	#include "client/sound/sound_openal.h"
@@ -768,6 +769,9 @@ private:
 
 	std::unique_ptr<ISoundManager> sound_manager;
 	SoundMaker *soundmaker = nullptr;
+	
+	// VR support
+	std::unique_ptr<VRManager> m_vr_manager;
 
 	ChatBackend *chat_backend = nullptr;
 	CaptureLogOutput m_chat_log_buf;
@@ -861,6 +865,7 @@ private:
 
 Game::Game() :
 	m_chat_log_buf(g_logger),
+	m_vr_manager(new VRManager()),
 	m_game_ui(new GameUI())
 {
 	g_settings->registerChangedCallback("chat_log_level",
@@ -925,6 +930,9 @@ Game::~Game()
 	delete nodedef_manager;
 	delete itemdef_manager;
 	delete draw_control;
+
+	// Cleanup VR
+	m_vr_manager.reset();
 
 	clearTextureNameCache();
 
@@ -1425,6 +1433,13 @@ bool Game::createClient(const GameStartData &start_data)
 
 	if (mapper && client->modsLoaded())
 		client->getScript()->on_minimap_ready(mapper);
+
+	// Initialize VR
+	if (m_vr_manager && !m_vr_manager->InitializeVR()) {
+		infostream << "VR initialization failed, continuing without VR support" << std::endl;
+	} else if (m_vr_manager) {
+		infostream << "VR initialized successfully" << std::endl;
+	}
 
 	return true;
 }
@@ -3060,6 +3075,11 @@ void Game::updateCamera(f32 dtime)
 			camera->getDirection(), camera->getFovMax(), camera->getOffset(),
 			player->light_color);
 	}
+
+	// Update VR poses
+	if (m_vr_manager && m_vr_manager->IsVRInitialized()) {
+		m_vr_manager->UpdateVRPoses();
+	}
 }
 
 void Game::updateCameraMode()
@@ -4177,6 +4197,11 @@ void Game::drawScene(ProfilerGraph *graph, RunStats *stats)
 	}
 
 	this->driver->endScene();
+
+	// Send frame to VR
+	if (m_vr_manager && m_vr_manager->IsVRInitialized()) {
+		m_vr_manager->SubmitVRFrame();
+	}
 
 	stats->drawtime = tt_draw.stop(true);
 	g_profiler->graphAdd("Draw scene [us]", stats->drawtime);

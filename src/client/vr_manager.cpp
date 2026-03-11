@@ -2,19 +2,55 @@
 #include "log.h"
 #include "debug.h"
 
+#include <cstdint>
+
+#include "../../irr/src/OpenGL/Common.h"
+#include "../../irr/src/COpenGLCoreTexture.h"
+
 #ifdef BUILD_WITH_VR
+
+static VRManager *g_active_vr_manager = nullptr;
+
+static GLuint get_gl_texture_name(video::ITexture *texture)
+{
+	if (!texture)
+		return 0;
+
+	if (auto *gl3_tex = dynamic_cast<video::COpenGL3Texture *>(texture))
+		return gl3_tex->getOpenGLTextureName();
+
+	static bool warned = false;
+	if (!warned) {
+		warned = true;
+		errorstream << "VR: texture is not OpenGL3. Set video_driver = opengl3 in minetest.conf." << std::endl;
+	}
+
+	return 0;
+}
 
 VRManager::VRManager() 
     : m_pHMD(nullptr)
     , m_pCompositor(nullptr)
     , m_bVRInitialized(false)
 {
+	if (!g_active_vr_manager)
+		g_active_vr_manager = this;
 }
 
 VRManager::~VRManager() {
     if (m_bVRInitialized) {
         ShutdownVR();
     }
+
+	SetEyeTextures(nullptr, nullptr);
+
+	if (g_active_vr_manager == this)
+		g_active_vr_manager = nullptr;
+}
+
+VRManager *VRManager::getActive()
+{
+	return g_active_vr_manager;
 }
 
 bool VRManager::InitializeVR() {
@@ -97,16 +133,67 @@ void VRManager::UpdateVRPoses() {
 
 void VRManager::SubmitVRFrame() {
     if (!m_bVRInitialized || !m_pCompositor || !m_pHMD) return;
-    
-    // Отправка кадра в VR композитор
-    // Пока просто вызываем композитор без передачи текстур
-    // В будущем здесь будет передача стерео текстур
-    vr::EVRCompositorError leftError = m_pCompositor->Submit(vr::Eye_Left, nullptr);
-    vr::EVRCompositorError rightError = m_pCompositor->Submit(vr::Eye_Right, nullptr);
-    
-    // Тихо игнорируем ошибки композитора
-    (void)leftError;
-    (void)rightError;
+
+	if (!m_left_eye || !m_right_eye)
+		return;
+
+	GLuint left_id = get_gl_texture_name(m_left_eye);
+	GLuint right_id = get_gl_texture_name(m_right_eye);
+	if (!left_id || !right_id) {
+		static bool warned = false;
+		if (!warned) {
+			warned = true;
+			errorstream << "VR: OpenGL texture name is 0. Left=" << left_id
+				<< " Right=" << right_id << std::endl;
+		}
+		return;
+	}
+
+	vr::Texture_t left = {(void*)(uintptr_t)left_id, vr::TextureType_OpenGL, vr::ColorSpace_Gamma};
+	vr::Texture_t right = {(void*)(uintptr_t)right_id, vr::TextureType_OpenGL, vr::ColorSpace_Gamma};
+
+	vr::EVRCompositorError left_err = m_pCompositor->Submit(vr::Eye_Left, &left);
+	vr::EVRCompositorError right_err = m_pCompositor->Submit(vr::Eye_Right, &right);
+
+	vr::EVRCompositorError err = (left_err != vr::VRCompositorError_None) ? left_err : right_err;
+	if (err != vr::VRCompositorError_None && err != m_last_submit_error) {
+		m_last_submit_error = err;
+		errorstream << "VR Submit error: " << static_cast<int>(err) << std::endl;
+	} else if (err == vr::VRCompositorError_None) {
+		m_last_submit_error = err;
+	}
+}
+
+void VRManager::SetEyeTextures(video::ITexture *left, video::ITexture *right)
+{
+	if (left == m_left_eye && right == m_right_eye)
+		return;
+
+	if (left) {
+		auto size = left->getSize();
+		infostream << "VR: left eye texture size " << size.Width << "x" << size.Height
+			<< " fmt " << static_cast<int>(left->getColorFormat())
+			<< " driver " << static_cast<int>(left->getDriverType()) << std::endl;
+	}
+	if (right) {
+		auto size = right->getSize();
+		infostream << "VR: right eye texture size " << size.Width << "x" << size.Height
+			<< " fmt " << static_cast<int>(right->getColorFormat())
+			<< " driver " << static_cast<int>(right->getDriverType()) << std::endl;
+	}
+
+	if (m_left_eye)
+		m_left_eye->drop();
+	if (m_right_eye)
+		m_right_eye->drop();
+
+	m_left_eye = left;
+	m_right_eye = right;
+
+	if (m_left_eye)
+		m_left_eye->grab();
+	if (m_right_eye)
+		m_right_eye->grab();
 }
 
 void VRManager::ShutdownVR() {
@@ -117,6 +204,8 @@ void VRManager::ShutdownVR() {
         m_pCompositor = nullptr;
         m_bVRInitialized = false;
     }
+
+	SetEyeTextures(nullptr, nullptr);
 }
 
 #else

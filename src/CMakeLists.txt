@@ -639,6 +639,8 @@ if(BUILD_CLIENT)
 	else()
 		add_executable(${PROJECT_NAME})
 	endif()
+	# Access Irrlicht internal headers for OpenGL texture handles (VR MVP).
+	target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/irr/src)
 
 
 	if(CMAKE_GENERATOR STREQUAL "Xcode")

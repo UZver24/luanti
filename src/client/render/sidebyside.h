@@ -23,4 +23,15 @@ private:
 	RenderTarget *target;
 };
 
+class StoreVREyeTexturesStep : public TrivialRenderStep
+{
+public:
+	StoreVREyeTexturesStep(TextureBuffer *buffer, u8 left_index, u8 right_index);
+	void run(PipelineContext &context) override;
+private:
+	TextureBuffer *buffer;
+	u8 left_index;
+	u8 right_index;
+};
+
 void populateSideBySidePipeline(RenderPipeline *pipeline, Client *client, bool horizontal, bool flipped, v2f &virtual_size_scale);

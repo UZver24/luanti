@@ -864,8 +864,8 @@ private:
 };
 
 Game::Game() :
-	m_chat_log_buf(g_logger),
 	m_vr_manager(new VRManager()),
+	m_chat_log_buf(g_logger),
 	m_game_ui(new GameUI())
 {
 	g_settings->registerChangedCallback("chat_log_level",

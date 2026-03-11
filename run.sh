@@ -246,6 +246,7 @@ main() {
     fi
     
     print_info "Лог файл: $log_file"
+    ln -sf "$log_file" "logs/luanti_latest.log"
     
     # Запуск в зависимости от режима
     if [ "$debug_mode" = true ]; then

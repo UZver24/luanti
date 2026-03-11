@@ -6,15 +6,24 @@
 #include <string>
 #include <memory>
 
+namespace video {
+	class ITexture;
+}
+
 class VRManager {
 private:
-    vr::IVRSystem* m_pHMD;
-    vr::IVRCompositor* m_pCompositor;
-    bool m_bVRInitialized;
-    
+	vr::IVRSystem* m_pHMD;
+	vr::IVRCompositor* m_pCompositor;
+	bool m_bVRInitialized;
+	video::ITexture *m_left_eye {nullptr};
+	video::ITexture *m_right_eye {nullptr};
+	vr::EVRCompositorError m_last_submit_error = vr::VRCompositorError_None;
+
 public:
     VRManager();
     ~VRManager();
+
+	static VRManager *getActive();
     
     // Инициализация VR системы
     bool InitializeVR();
@@ -30,8 +39,9 @@ public:
     // Обновление VR поз
     void UpdateVRPoses();
     
-    // Отправка кадра в VR
-    void SubmitVRFrame();
+	// Отправка кадра в VR
+	void SubmitVRFrame();
+	void SetEyeTextures(video::ITexture *left, video::ITexture *right);
     
     // Очистка ресурсов
     void ShutdownVR();
@@ -46,16 +56,19 @@ public:
 // Заглушка для случая, когда VR не включен
 class VRManager {
 public:
-    VRManager() {}
-    ~VRManager() {}
-    
-    bool InitializeVR() { return false; }
-    bool IsVRReady() const { return false; }
-    bool IsVRInitialized() const { return false; }
+	VRManager() {}
+	~VRManager() {}
+
+	static VRManager *getActive() { return nullptr; }
+	
+	bool InitializeVR() { return false; }
+	bool IsVRReady() const { return false; }
+	bool IsVRInitialized() const { return false; }
     std::string GetVRDeviceName() const { return "VR not available"; }
     std::string GetVRDriverName() const { return "VR not available"; }
     void UpdateVRPoses() {}
     void SubmitVRFrame() {}
+	void SetEyeTextures(video::ITexture *, video::ITexture *) {}
     void ShutdownVR() {}
 };
 

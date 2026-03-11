@@ -7,6 +7,7 @@
 #include "client/client.h"
 #include "client/hud.h"
 #include "client/camera.h"
+#include "client/vr_manager.h"
 #include <ISceneManager.h>
 
 DrawImageStep::DrawImageStep(u8 texture_index, v2f _offset) :
@@ -31,6 +32,19 @@ void DrawImageStep::run(PipelineContext &context)
 	core::dimension2du output_size = context.device->getVideoDriver()->getScreenSize();
 	v2s32 pos(offset.X * output_size.Width, offset.Y * output_size.Height);
 	context.device->getVideoDriver()->draw2DImage(texture, pos);
+}
+
+StoreVREyeTexturesStep::StoreVREyeTexturesStep(TextureBuffer *_buffer, u8 _left_index, u8 _right_index) :
+	buffer(_buffer), left_index(_left_index), right_index(_right_index)
+{}
+
+void StoreVREyeTexturesStep::run(PipelineContext &context)
+{
+	VRManager *vr = VRManager::getActive();
+	if (!vr || !vr->IsVRInitialized())
+		return;
+
+	vr->SetEyeTextures(buffer->getTexture(left_index), buffer->getTexture(right_index));
 }
 
 void populateSideBySidePipeline(RenderPipeline *pipeline, Client *client, bool horizontal, bool flipped, v2f &virtual_size_scale)
@@ -73,6 +87,8 @@ void populateSideBySidePipeline(RenderPipeline *pipeline, Client *client, bool h
 	}
 
 	pipeline->addStep<OffsetCameraStep>(0.0f);
+
+	pipeline->addStep<StoreVREyeTexturesStep>(buffer, TEXTURE_LEFT, TEXTURE_RIGHT);
 
 	auto screen = pipeline->createOwned<ScreenTarget>();
 
